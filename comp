@@ -1,7 +1,7 @@
 compile () {
 for file in "$@"
 do
-	g++ -c -o obj_code/"$file".o "$file".cpp -std=c++11
+	g++ -c -o obj_code/"$file".o "$file".?pp -lGL -lGLU -lGLEW -lglut -lm -Wno-write-strings -std=c++11
 done
 }
 

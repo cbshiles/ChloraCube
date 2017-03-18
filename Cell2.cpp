@@ -1,16 +1,5 @@
-#include "Cell.hpp"
-
-Cell::Cell():energy(1){}
-
-void Cell::link(Cell* c){
-  connects.push_back(c);
-  c->connects.push_back(this);
-}
-
-void Cell::move(){
-  Action *a = decide();
+void Cell::move(Action *a){
   energy -= a->cost;
-
   if (energy <= 0){
     a->cleanup();
     //remove this cell
@@ -18,8 +7,6 @@ void Cell::move(){
     a->act(this);
   }
 }
-
-int Cell::energyLevel(){return energy;}
 
 class Feed : public Action {
 private:
@@ -81,10 +68,3 @@ public:
 //   disconnect(neighbor);
 // }
 // sever = new Action(5, f_sever);
-
-Action* SimpCell::decide(){
-  if (energyLevel() > 104){
-    return new Divide(new SimpCell()); 
-  }
-  else return new Feed;
-}
