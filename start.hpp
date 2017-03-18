@@ -243,30 +243,36 @@ struct Mind{
 
 
 /*
-  #include <iostream>
-  #include <exception>
-  using namespace std;
 
-  class myexception: public exception
-  {
-  virtual const char* what() const throw()
-  {
-  return "My exception happened";
-  }
-  } myex;
+class Share: public Action {
+private:
+  Cell* receiver;
+  int max, amt; //amount
 
-  int main () {
-  try
-  {
-  throw myex;
+public:
+  Share(Cell* r, int a): Action(1), receiver(r), max(5){
+    //cant take energy, or give over max energy at a time
+    if (a < 0) amt=0;
+    else if (a > max) amt=max;
+    else amt = a;
   }
-  catch (exception& e)
-  {
-  cout << e.what() << '\n';
+
+  void act(Cell* target){
+    //can't give more energy than you have
+    if (target->energy < amt) amt=target->energy;
+
+    //the transaction
+    target->energy -= amt;
+    receiver->energy += amt;
   }
-  return 0;
-  } */
-/* Interface for minds to interact with cells.
-   For efficiency's sake, there is a single View created for an entire game, that
-   has a transition method for switching between cells. */
+};
+*/
+
+//careful when making sever, will need to remove pointers and stuff
+// void Cell::f_sever(Cell* neighbor){
+//   //make sure neighbor is actually connected to this cell
+//   //if so
+//   disconnect(neighbor);
+// }
+// sever = new Action(5, f_sever);
 
