@@ -26,14 +26,15 @@ struct Color {
 Color* white = new Color(255,255,255);
 Color* blue = new Color(17,31,92);
 Color* red = new Color(227,51,38);
-Color* yellow = new Color(244,188,43);
+Color* orange = new Color(255,150,0);
+Color* yellow = new Color(254,255,0);
 Color* black = new Color(0,0,0);
 
 // Initialization routine.
 void GL_init(void) 
 {
     // Set background (or clearing) color.
-    glClearColor(1.0, 1.0, .0, 0.0); 
+    glClearColor(.0, .0, .0, 0.0); 
 
     glClear(GL_COLOR_BUFFER_BIT);
     glClearDepth(1.0);

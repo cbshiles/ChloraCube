@@ -1,27 +1,8 @@
-#include <vector>
 #include <string>
 
-#include <iostream>
-#define P(dest, s) (dest << s)
-#define PO(s) (P(std::cout, s))
+#include "Interface.hpp"
 
-#define PL(dest, s) (dest << s << std::endl)
-#define POL(s) (PL(std::cout, s))
-#define PEL(s) (PL(std::cerr, s))
-#define POS(s) (POL(#s << " " << s))
-
-struct Bone: public std::exception
-{
-  const char* msg;
-
-  Bone(const char* gsm): msg(gsm)
-  {}
-  
-  virtual const char* what() const throw()
-  {
-    return msg;
-  }
-};
+ 
 
 
 class Mind;
@@ -34,69 +15,13 @@ class Mind;
 
 struct Cell{
   Mind *mind;
-  int energy;
+  int energy, team;
 
-  Cell(Mind *m, int ie): mind(m), energy(ie)
+  Cell(Mind *m, int ie, int t): mind(m), energy(ie), team(t)
   {}
 
 };
 
-template <class T>
-struct Grid{
-
-  int width, height;
-  std::vector<T> data;//the actual grid
-  
-  Grid(int x, int y):
-    width(x), height(y)
-  { 
-    for (int i=0; i<x*y; i++)
-      data.push_back(0);
-  }
-
-  char inBounds(int x, int y){
-    return x>=0 && x<width && y>=0 && y<height;
-  }
-
-  inline char inBounds(int x, int y, int dir){
-    locate(x,y,dir);
-    return inBounds(x0, y0);
-  }
-
-  inline void set(T thing, int x, int y){data[x+y*width] = thing;}
-
-  inline void set(T thing, int x, int y, int dir){
-    locate(x,y,dir);
-    set(thing, x0, y0);
-  }
-  
-  inline T get(int x, int y){return data[x+y*width];}
-
-  inline T get(int x, int y, int dir){
-    locate(x,y,dir);
-    return get(x0, y0);
-  }
-  
-  void bohPrint(){
-    for (int j=0; j<height; j++){
-      for (int i=0; i<width; i++)
-	PO( &data[i+j*width] << " ");
-      POL("");
-    }}
-
-  int x0, y0;
-  
-  int locate(int x, int y, int dir){
-    if (dir%2){
-      x0 = x+dir-2;
-      y0 = y;
-    } else {
-      x0 = x;
-      y0 = y+dir-1;
-    }
-  }
-
-};
 
 /* Because an Action can be created and never be used,
    (in the case of a cell who chooses an action it does not have
@@ -139,7 +64,7 @@ struct Divide: public Action {
     int be;
     Cell* self = grid->get(x,y);
     self->energy = (be = self->energy/2);
-    grid->set(new Cell(mind, be), x, y, direction);
+    grid->set(new Cell(mind, be, self->team), x, y, direction);
   }
 
   void cleanup(){
@@ -240,7 +165,64 @@ struct Mind{
   
 };
 
+struct Simp: public Mind{
+  void decide(View v){
+    POL("energy: " << v.getEnergy());
+    if (v.getEnergy() < 102)
+      v.feed();
+    else{
+      for (int i=0; i<4; i++){
+	if(v.valid(i) && !v.look(i)){
+	  v.divide(i, new Simp());
+	  return;
+	}
+      }
+      v.feed();
+    }
+  }
+};
 
+  
+  CellGame::CellGame(int s, int t):
+    turns(t), size(s), grid(s, s), c(0)
+  {
+    //randomized placement of all participating minds
+    grid.set(new Cell(new Simp(), 1, 1), 0, 0);
+  }
+
+  Grid<int>* CellGame::turn(){
+
+    if (c++ == turns)
+      return new Grid<int>(size, size); //blank board signifies end of game
+    
+    for (int y=0; y<grid.height; y++){
+      for (int x=0; x<grid.width; x++){
+	Cell* c = grid.get(x,y);
+	try {
+	  if (c){
+	    POL(x<<y<<"HERE !" << c->mind);
+	    c->mind->decide(View(&grid, x, y));
+	    POL("THERE !");
+	  }
+	} catch (Bone b){
+	  POL(b.what());
+	}}}
+    return convert();
+  }
+
+
+  //could be converted into a template fn inside Grid {Cell* -> int}
+  Grid<int>* CellGame::convert(){
+    Grid<int>* pg = new Grid<int>(size, size);
+
+    Cell* c;
+    for (int y=0; y<grid.height; y++){
+      for (int x=0; x<grid.width; x++){
+	pg->set((!(c=grid.get(x,y)))?0:c->team, x, y);
+      }}
+    
+    return pg;
+  }
 
 /*
 
@@ -275,4 +257,5 @@ public:
 //   disconnect(neighbor);
 // }
 // sever = new Action(5, f_sever);
+
 
