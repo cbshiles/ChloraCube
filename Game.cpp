@@ -2,9 +2,6 @@
 
 #include "Interface.hpp"
 
- 
-
-
 class Mind;
 
 /*
@@ -188,6 +185,10 @@ struct Simp: public Mind{
   {
     //randomized placement of all participating minds
     grid.set(new Cell(new Simp(), 1, 1), 0, 0);
+
+    grid.set(new Cell(new Simp(), 1, 2), 10, 10);
+
+        grid.set(new Cell(new Simp(), 1, 3), 17, 17);
   }
 
   Grid<int>* CellGame::turn(){
@@ -200,9 +201,7 @@ struct Simp: public Mind{
 	Cell* c = grid.get(x,y);
 	try {
 	  if (c){
-	    POL(x<<y<<"HERE !" << c->mind);
 	    c->mind->decide(View(&grid, x, y));
-	    POL("THERE !");
 	  }
 	} catch (Bone b){
 	  POL(b.what());

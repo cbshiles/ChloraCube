@@ -17,7 +17,9 @@ void resize(int x, int y){
 }
 
 int main(int argc, char* argv[]){
-  s = new Screen("Chlora", 15);
-  game = new CellGame(15, 1000);
+  int sz = 25;
+  int turns = 3000;
+  s = new Screen("Chlora", sz);
+  game = new CellGame(sz, turns);
   glutMainLoop();
 }

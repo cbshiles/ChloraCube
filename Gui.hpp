@@ -1,5 +1,6 @@
-#include "MyGL.hpp"
 #include <iostream>
+#include <cstdlib>
+#include "MyGL.hpp"
 #include "Interface.hpp"
 /*
   This is a page we might just have to copy each time we use a new glut loop,
@@ -25,7 +26,7 @@ public:
   
 
   Screen(char* name, int s):
-    colorArray({white,orange}), size(s) 
+    colorArray({white,orange,blue, yellow}), size(s) 
   {
 
     xdim = AX*(AS+GB)+GB;
@@ -61,10 +62,17 @@ public:
     glutReshapeFunc(resize);
   }
 
+  int empty;
+
   
   void dims(int x, int y){
     //# doesnt reallly resize..
     xdim = x, ydim = y;
+  }
+
+  Color* colorLookup(int i){
+    empty = empty && (!i);
+    return colorArray[i];
   }
 
   void draw(Grid<int>* colors){
@@ -73,14 +81,14 @@ public:
     glClear(GL_COLOR_BUFFER_BIT);         // Clear the color buffer (background)
 
     black->setBackground();
-    POL("BEFORE LOOP");
-    int q=0; int x=0; int y=0;
+    empty=1;
+    //POL("BEFORE LOOP");
+    int q=0, x=0, y;
     for (double i=-1.0+GB/(AS*1.0*AX); x<size; x++, i+=(GB+AS+0.0)/xdim){
+      y=0;
       for (double j=-1.0+GB/(AS*1.0*AX); y<size; y++, j+=(GB+AS+0.0)/xdim){
-	POL("."<<x<<" "<<y);
 
-	colorArray[colors->get(x,y)]->set();
-	  POL("~");
+	colorLookup(colors->get(x,y))->set();
 
 	glBegin(GL_POLYGON);
 	glVertex3f(i, j, 0);
@@ -90,7 +98,8 @@ public:
 	glEnd();
       }
     }
-    POL("AFTER LOOP");
+    if (empty) std::exit(0);
+  //POL("AFTER LOOP");
       glFlush();
     glutPostRedisplay();
   }
