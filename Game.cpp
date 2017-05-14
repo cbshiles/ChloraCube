@@ -69,6 +69,21 @@ struct Divide: public Action {
   }
 };
 
+struct Share: public Action {
+  int direction;
+  Share(int dir):Action(0, "Share"), direction(dir)
+  {}
+
+  void act(int x, int y, Grid<Cell*>* grid){
+    int be;
+    Cell* self = grid->get(x,y);
+    self->energy--;
+    Cell* nbr = grid->get(x, y, direction);
+    nbr->energy++;
+  }
+  
+};
+
 #define UP 0
 #define DOWN 2
 #define LEFT 1
@@ -87,8 +102,9 @@ class View{
   Action* action;
   
   int Bvalid(int dir){
-    POL(x<< " " << y<< " " << dir);
-    grid->inBounds(x, y, dir);
+    //    POL(x<< " " << y<< " " << dir);
+    //POL(0+grid->inBounds(x, y, dir));
+    return grid->inBounds(x, y, dir);
   }
 
   Cell* getNeighbor(int dir){
@@ -154,6 +170,17 @@ public:
     doAction();
   }
 
+  void share(int dir){
+    if (! grid->inBounds(x,y,dir))
+      throw Bone("Sharing out of bounds!");
+    
+    Cell* nbr = grid->get(x,y,dir);
+    if (!nbr) throw Bone("Sharing with unoccupied space");
+
+    action = new Share(dir);
+    doAction();
+  }
+
 };
 
 struct Mind{
@@ -164,7 +191,7 @@ struct Mind{
 
 struct Simp: public Mind{
   void decide(View v){
-    POL("energy: " << v.getEnergy());
+    //POL("energy: " << v.getEnergy());
     if (v.getEnergy() < 102)
       v.feed();
     else{
@@ -179,16 +206,51 @@ struct Simp: public Mind{
   }
 };
 
+
+struct Giver: public Mind{
+  void decide(View v){
+    POL("giver energy: " << v.getEnergy());
+    if (v.getEnergy() < 10)
+      v.feed();
+    else if (v.getEnergy() < 102){
+      for (int i=3; i<4; i++){
+	if(v.valid(i) && v.look(i)){
+	  POL("Dos it ever share?");
+	  v.share(i);
+	  return;
+	}
+      }
+    }
+    else{
+      for (int i=0; i<4; i++){
+	if(v.valid(i) && !v.look(i)){
+	  v.divide(i, new Giver());
+	  return;
+	}
+      }
+      for (int i=0; i<4; i++){
+	if(v.valid(i)){
+	  v.share(i);
+	  return;
+	}
+      }
+    }
+    v.feed();
+  }
+};
+
   
   CellGame::CellGame(int s, int t):
     turns(t), size(s), grid(s, s), c(0)
   {
     //randomized placement of all participating minds
-    grid.set(new Cell(new Simp(), 1, 1), 0, 0);
+    //grid.set(new Cell(new Simp(), 1, 1), 0, 0);
 
-    grid.set(new Cell(new Simp(), 1, 2), 10, 10);
+    grid.set(new Cell(new Simp(), 1, 2), 24, 10);
 
-        grid.set(new Cell(new Simp(), 1, 3), 17, 17);
+    //grid.set(new Cell(new Simp(), 1, 3), 17, 17);
+
+    grid.set(new Cell(new Giver(), 1, 4), 0, 10);
   }
 
   Grid<int>* CellGame::turn(){
@@ -222,32 +284,6 @@ struct Simp: public Mind{
     
     return pg;
   }
-
-/*
-
-class Share: public Action {
-private:
-  Cell* receiver;
-  int max, amt; //amount
-
-public:
-  Share(Cell* r, int a): Action(1), receiver(r), max(5){
-    //cant take energy, or give over max energy at a time
-    if (a < 0) amt=0;
-    else if (a > max) amt=max;
-    else amt = a;
-  }
-
-  void act(Cell* target){
-    //can't give more energy than you have
-    if (target->energy < amt) amt=target->energy;
-
-    //the transaction
-    target->energy -= amt;
-    receiver->energy += amt;
-  }
-};
-*/
 
 //careful when making sever, will need to remove pointers and stuff
 // void Cell::f_sever(Cell* neighbor){

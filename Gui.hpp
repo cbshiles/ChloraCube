@@ -26,7 +26,7 @@ public:
   
 
   Screen(char* name, int s):
-    colorArray({white,orange,blue, yellow}), size(s) 
+    colorArray({white,orange,blue, yellow,black}), size(s) 
   {
 
     xdim = AX*(AS+GB)+GB;

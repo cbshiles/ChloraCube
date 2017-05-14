@@ -3,6 +3,18 @@
 template <class T>
 struct Grid{
 
+  int x0, y0;
+  
+  int locate(int x, int y, int dir){
+    if (dir%2){
+      x0 = x+dir-2;
+      y0 = y;
+    } else {
+      x0 = x;
+      y0 = y+dir-1;
+    }
+  }
+
   int width, height;
   std::vector<T> data;//the actual grid
   
@@ -43,16 +55,6 @@ struct Grid{
       POL("");
     }}
 
-  int x0, y0;
-  
-  int locate(int x, int y, int dir){
-    if (dir%2){
-      x0 = x+dir-2;
-      y0 = y;
-    } else {
-      x0 = x;
-      y0 = y+dir-1;
-    }
-  }
+
 
 };
