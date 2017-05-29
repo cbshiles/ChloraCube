@@ -14,6 +14,9 @@ struct Bone: public std::exception
 
   Bone(const char* gsm): msg(gsm)
   {}
+
+  Bone(std::basic_string<char> str): msg(str.c_str())
+  {}
   
   virtual const char* what() const throw()
   {

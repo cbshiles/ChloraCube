@@ -29,6 +29,7 @@ Color* red = new Color(227,51,38);
 Color* orange = new Color(255,150,0);
 Color* yellow = new Color(254,255,0);
 Color* black = new Color(0,0,0);
+Color* green = new Color(0,254,0);
 
 // Initialization routine.
 void GL_init(void) 

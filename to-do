@@ -1,2 +1,23 @@
 Make size of screen a derivation of the atomic size of a square (leave a 2 px black border, and each square filled with orange temporarily)
 
+Interface b/w game and minds messed up, cells should be returning actions
+~~~Rules for the interface
+	 Mind only gets to choose 1 action per turn
+	      This could manifeest as returning an action, or the view could store the last action choosen (the mind would call a method of the action, if the method was called multiple times the  view would only remember the last call)
+	      As has been said before, if youre doing the latter of theseaction's constructors can havee no side effects
+
+Lets make it actually return an action: So whats this mean?
+
+Action can be created when they're not valid, need to be light weight
+
+*Eventually need to spawn Mind decide in other thread and monitor it, giving it a time limit. (Cuz you can't have players doing inifinite loops)
+
+The View should probably still confirm the action, lets the game control a copy of each
+
+Its still going to be possible to cheat because you can call those mthods on the view at this point, but its a step in the right direction
+
+Really need to set up test cases
+
+Really work on that thread monitoring thing. You can use that fo a sanity test for new bots, and even have one always sporadically checking the game just in case.
+
+Map actions (action checkers) by their name

@@ -2,28 +2,21 @@
 
 #include "Interface.hpp"
 
-class Mind;
-
+////////////////////////////////////////////////////////////////////////
+//                        CORE
+////////////////////////////////////////////////////////////////////////
 /*
   cell, action, and grid are level 0 objects.
   they are dumb and blind, only providing basic functionality
   any controls, error checking, info hiding is in higher levels
 */
 
-struct Cell{
-  Mind *mind;
-  int energy, team;
-
-  Cell(Mind *m, int ie, int t): mind(m), energy(ie), team(t)
-  {}
-
-};
-
+class Mind;
 
 /* Because an Action can be created and never be used,
    (in the case of a cell who chooses an action it does not have
    enough energy to perform) an Action's constructor needs to not modify
-   anything outside of the Action itself */
+   anything outside of the Action itself,and must be able to clean itself up with the destructor */
 struct Action{
 
   int cost;
@@ -37,6 +30,19 @@ struct Action{
   virtual void cleanup(){}
   
 };
+
+struct Cell{
+  Mind *mind;
+  int energy, team;
+
+  Cell(Mind *m, int ie, int t): mind(m), energy(ie), team(t)
+  {}
+
+};
+
+////////////////////////////////////////////////////////////////////////
+//                        ACTIONS
+////////////////////////////////////////////////////////////////////////
 
 struct Feed : public Action {
   Feed(): Action(0, "Feed"), rate(1)
@@ -84,6 +90,15 @@ struct Share: public Action {
   
 };
 
+struct Nop: public Action {
+
+  Nop():Action(0, "Nop")
+  {}
+
+  void act(int x, int y, Grid<Cell*>* g){}
+  
+};
+
 #define UP 0
 #define DOWN 2
 #define LEFT 1
@@ -95,15 +110,12 @@ class View{
      For efficiency's sake, there is a single View created for an entire game, that
      has a transition method for switching between cells. */
 
-  char spent;
   int x,y;
   Cell* cell;
   Grid<Cell*>* grid;
   Action* action;
   
   int Bvalid(int dir){
-    //    POL(x<< " " << y<< " " << dir);
-    //POL(0+grid->inBounds(x, y, dir));
     return grid->inBounds(x, y, dir);
   }
 
@@ -111,30 +123,21 @@ class View{
     grid->get(x,y, dir);
   }
 
+  //assumes a valid action (action must be verified before calling this)
   void doAction(){
-
-    POL(x << " " << y<< " "<< action->name);
-    
-    if (spent++) throw Bone("Already moved!");
-
-    cell->energy -= action->cost;
-    
-    if (cell->energy >= 0){
-      action->act(x,y,grid);      
-    } else {
+    if (cell->energy < action->cost){
       action->cleanup();
-      delete cell;
+      throw Bone("Can't afford action!");
     }
-
-    POL("End of: "<<x << " " << y<< " "<< action->name);
+    cell->energy -= action->cost;
+    action->act(x,y,grid);      
   }
 
 public:
 
   //assuming cell is non null
   View(Grid<Cell*>* g, int xx, int yy):
-    cell(g->get(xx, yy)), x(xx), y(yy), grid(g),
-    spent(0)
+    cell(g->get(xx, yy)), x(xx), y(yy), grid(g)
   { }
 
   int valid(int dir){
@@ -153,92 +156,191 @@ public:
     return cell->energy;
   }
 
-  void feed(){
-    action = new Feed();
-    doAction();
-  }
-
-  void divide(int dir, Mind* m){
-
-    if (! grid->inBounds(x,y,dir))
-      throw Bone("Dividing out of bounds!");
-    
-    Cell* nbr = grid->get(x,y,dir);
-    if (nbr) throw Bone("Dividing into occupied space");
-
-    action = new Divide(dir, m);
-    doAction();
-  }
-
-  void share(int dir){
-    if (! grid->inBounds(x,y,dir))
-      throw Bone("Sharing out of bounds!");
-    
-    Cell* nbr = grid->get(x,y,dir);
-    if (!nbr) throw Bone("Sharing with unoccupied space");
-
-    action = new Share(dir);
-    doAction();
-  }
-
 };
 
 struct Mind{
 
-  virtual void decide(View v)=0;
+  virtual Action* decide(View v)=0;
   
 };
 
 struct Simp: public Mind{
-  void decide(View v){
+  Action* decide(View v){
     //POL("energy: " << v.getEnergy());
     if (v.getEnergy() < 102)
-      v.feed();
+      return new Feed();
     else{
       for (int i=0; i<4; i++){
 	if(v.valid(i) && !v.look(i)){
-	  v.divide(i, new Simp());
-	  return;
+	  return new Divide(i, new Simp());
 	}
-      }
-      v.feed();
+      } 
+      return new Feed();
     }
   }
 };
 
 
+
+class CircInt {
+
+  int n, base;
+  
+public:
+
+  CircInt(int i, int b):
+    n(i), base(b){}
+
+  CircInt(int b):
+    n(0), base(b){}
+
+  int inc(int x){
+    return (n = (n+x)%base);
+  }
+
+  int dec(int x){
+    return (n = abs(n-x)%base);
+  }
+  
+};
+
+struct SpydrVine: public Mind{
+  int state, dir,spawnDir, count;
+
+  SpydrVine(int d): dir(d), state(0), spawnDir(-1), count(0)
+  {}
+
+  //decide which direction to divide to, -1 for none
+  int getDir(View *v){
+
+    int d = dir;
+    CircInt di(dir, 4);
+    if (v->valid(d) && !v->look(d)) return d;
+    d = di.inc(2);
+    if (v->valid(d) && !v->look(d)) return d;
+    d = di.inc(1);
+    if (v->valid(d) && !v->look(d)) return d;
+    d = di.inc(2);
+    if (v->valid(d) && !v->look(d)) return d;
+    return -1;
+  }
+  
+  Action* decide(View v){
+    count --;
+    if (spawnDir == -1){
+      if (v.getEnergy() > 102){
+	int gd = getDir(&v);
+	if (gd != -1){
+	  spawnDir = gd;
+	  count = 200;	  
+	  return new Divide(gd, new SpydrVine(gd));
+	    }
+      }
+      return new Feed();
+    }else {
+      if (count > 1 && v.getEnergy() > 10 && v.look(spawnDir)){
+	return new Share(spawnDir);
+      }
+      if (v.getEnergy() > 102){
+	int gd = getDir(&v);
+	if (gd != -1){
+	  return new Divide(gd, new SpydrVine(gd));
+	    }
+      }
+      return new Feed();
+    }
+  }
+};
+
 struct Giver: public Mind{
-  void decide(View v){
-    POL("giver energy: " << v.getEnergy());
+  Action* decide(View v){
     if (v.getEnergy() < 10)
-      v.feed();
+      return new Feed();
     else if (v.getEnergy() < 102){
       for (int i=3; i<4; i++){
 	if(v.valid(i) && v.look(i)){
-	  POL("Dos it ever share?");
-	  v.share(i);
-	  return;
+	  return new Share(i);
 	}
       }
     }
     else{
       for (int i=0; i<4; i++){
 	if(v.valid(i) && !v.look(i)){
-	  v.divide(i, new Giver());
-	  return;
+	  return new Divide(i, new Giver());
 	}
       }
       for (int i=0; i<4; i++){
 	if(v.valid(i)){
-	  v.share(i);
-	  return;
+	  return new Share(i);
 	}
       }
     }
-    v.feed();
+    return new Feed();
   }
 };
 
+
+
+void feed(Action *a, View *vw){
+  Feed* f = dynamic_cast<Feed*>(a);
+  if(f != NULL) ;
+  else throw Bone("Mislabeled Action! (Not a Feed)");
+}
+
+void divide(Action *a, View *vw){
+
+  Divide* d = dynamic_cast<Divide*>(a);
+  if(d != NULL){
+    if (! vw->valid(d->direction))
+      throw Bone("Dividing out of bounds!");
+    
+    Cell* nbr = vw->look(d->direction);
+    if (nbr) throw Bone("Dividing into occupied space");
+  }
+  else throw Bone("Mislabeled Action! (Not a Divide)");
+}
+
+void share(Action *a, View *vw){
+
+  Share* s = dynamic_cast<Share*>(a);
+  if(s != NULL){
+    if (! vw->valid(s->direction))
+      throw Bone("Sharing out of bounds!");
+    
+    Cell* nbr = vw->look(s->direction);
+    if (!nbr) throw Bone("Sharing with unoccupied space");
+  }
+  else throw Bone("Mislabeled Action! (Not a Share)");
+}
+
+void nop(Action *a, View *vw){}
+
+#include <map>
+
+typedef void (*CheckPtr)(Action*, View*); // function pointer type
+typedef std::map<std::string, CheckPtr> CheckPtr_map;
+
+
+class ActionCheck {
+
+  CheckPtr_map map;
+
+public:
+  ActionCheck(){
+    map.emplace("Feed", &feed);
+    map.emplace("Divide", &divide);
+    map.emplace("Share", &share);
+    map.emplace("Nop", &nop);
+  }
+
+  void approval(Action *a, View *vw){
+    if(map[a->name])
+      map[a->name](a, vw);
+    else throw Bone("Action not found in map: "+a->name);
+  }
+  
+};
+ActionCheck actionCheck;
   
   CellGame::CellGame(int s, int t):
     turns(t), size(s), grid(s, s), c(0)
@@ -246,11 +348,15 @@ struct Giver: public Mind{
     //randomized placement of all participating minds
     //grid.set(new Cell(new Simp(), 1, 1), 0, 0);
 
-    grid.set(new Cell(new Simp(), 1, 2), 24, 10);
+        grid.set(new Cell(new SpydrVine(0), 1, 5), 0, 0);
 
-    //grid.set(new Cell(new Simp(), 1, 3), 17, 17);
+	grid.set(new Cell(new Simp(), 1, 1), 20, 20);
+	grid.set(new Cell(new Giver(), 1, 2), 40, 40);
+	grid.set(new Cell(new Simp(), 1, 1), 15, 15);
 
-    grid.set(new Cell(new Giver(), 1, 4), 0, 10);
+    grid.set(new Cell(new Giver(), 1, 2), 25, 25);
+
+    //grid.set(new Cell(new Giver(), 1, 4), 0, 10);
   }
 
   Grid<int>* CellGame::turn(){
@@ -261,18 +367,23 @@ struct Giver: public Mind{
     for (int y=0; y<grid.height; y++){
       for (int x=0; x<grid.width; x++){
 	Cell* c = grid.get(x,y);
-	try {
-	  if (c){
-	    c->mind->decide(View(&grid, x, y));
+	if (c){
+	  try {
+	    View vw = View(&grid, x, y);
+	    Action *a = c->mind->decide(vw);
+
+	    actionCheck.approval(a, &vw);
+	    a->act(x,y,&grid);
 	  }
-	} catch (Bone b){
-	  POL(b.what());
-	}}}
+	  catch (Bone b){
+	    POL(b.what());
+	  }}}}
     return convert();
   }
 
 
   //could be converted into a template fn inside Grid {Cell* -> int}
+//converts board into consumabl for opengl
   Grid<int>* CellGame::convert(){
     Grid<int>* pg = new Grid<int>(size, size);
 
